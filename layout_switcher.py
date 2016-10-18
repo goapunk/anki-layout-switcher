@@ -4,8 +4,6 @@ from anki.hooks import addHook, wrap
 import re
 import subprocess
 from anki.decks import defaultConf
-from sys import platform as _platform
-from aqt.editor import EditorWebView
 from aqt import mw
 from aqt.main import AnkiQt
 import aqt
@@ -67,7 +65,7 @@ def nLoadConf(self):
     f = self.form
     self.conf = self.mw.col.decks.confForDid(self.deck['id'])
     c = self.conf
-    f.layout_switch.setChecked(c.get('autoswitchLayout',True)) 
+    f.layout_switch.setChecked(c.get('autoswitchLayout',False)) 
     f.q_layout_box.setCurrentIndex(f.q_layout_box.findText(c.get('questionLayout', startLayout)))
     f.a_layout_b.setCurrentIndex(f.q_layout_box.findText(c.get('answerLayout',startLayout)))
 
