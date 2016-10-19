@@ -33,12 +33,14 @@ from aqt.deckconf import DeckConf
 from anki.utils import *
 startLayout = 'us'
 
+# switch layout according to the field in focus
 def onFocusGained(note, num):
     if num == 0:
         subprocess.run(["setxkbmap",mw.col.decks.confForDid(mw.col.decks.current()['id']).get('questionLayout', startLayout)])
     elif num == 1:
         subprocess.run(["setxkbmap",mw.col.decks.confForDid(mw.col.decks.current()['id']).get('answerLayout', startLayout)])
 
+# read the users current keyboard layout. Only reads the language, variants and other settings are ignored (fixme?)
 def getCurrentLayout():
     s = subprocess.Popen(("setxkbmap", "-print"),stdout=subprocess.PIPE).stdout.read()
     reg =re.compile('xkb_symbols   { include \"(\S+)\+(?P<layout>\S+)\+(\S+)')
@@ -46,6 +48,7 @@ def getCurrentLayout():
     global startLayout 
     startLayout = res.group('layout')
 
+# hook SetupUi() to add menu option to deck configuration
 def newSetupUi(self, Dialog):
      self.gridLayout_4 = QtWidgets.QGridLayout()
      self.gridLayout_4.setObjectName("gridLayout_4")
@@ -73,6 +76,7 @@ def newSetupUi(self, Dialog):
      self.a_layout_b.addItems(layouts)
      self.q_layout_box.addItems(layouts)
 
+# hook saveConf() to save our settings
 def nSaveConf(self):
     c = self.conf
     f = self.form
@@ -80,6 +84,7 @@ def nSaveConf(self):
     c['questionLayout'] = f.q_layout_box.currentText()
     c['answerLayout'] = f.a_layout_b.currentText()
 
+# hook loadConf() to load our settings
 def nLoadConf(self):
     f = self.form
     self.conf = self.mw.col.decks.confForDid(self.deck['id'])
@@ -88,6 +93,7 @@ def nLoadConf(self):
     f.q_layout_box.setCurrentIndex(f.q_layout_box.findText(c.get('questionLayout', startLayout)))
     f.a_layout_b.setCurrentIndex(f.q_layout_box.findText(c.get('answerLayout',startLayout)))
 
+# try to find all availabe layouts on this os
 def getLayouts():
     import lxml.etree
     repository = "/usr/share/X11/xkb/rules/base.xml"
@@ -95,9 +101,11 @@ def getLayouts():
     layouts = tree.xpath("//layout")
     return list(map(lambda x:x.xpath("./configItem/name")[0].text, layouts))
 
+# hook closeEvent() to change back to the initial layout
 def nCloseEvent(self, event):
     subprocess.run(["setxkbmap", startLayout])
 
+# linux only (fixme?)
 if isLin: 
     getCurrentLayout()
     addHook("editFocusGained", onFocusGained)
