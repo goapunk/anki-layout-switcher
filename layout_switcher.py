@@ -57,9 +57,9 @@ def onFocusGainedLin(note, num):
 # switch layout according to the field in focus for Windows
 def onFocusGainedWin(note, num):
     if num == 0:
-        win32api.LoadKeyboardLayout(mw.col.decks.confForDid(mw.col.decks.current()['id']).get('questionLayout', startLayout),1)
+        win32api.LoadKeyboardLayout(localIdent2Name[mw.col.decks.confForDid(mw.col.decks.current()['id']).get('questionLayout', startLayout)],1)
     elif num == 1:
-        win32api.LoadKeyboardLayout(mw.col.decks.confForDid(mw.col.decks.current()['id']).get('answerLayout', startLayout),1)
+        win32api.LoadKeyboardLayout(localIdent2Name[mw.col.decks.confForDid(mw.col.decks.current()['id']).get('answerLayout', startLayout)],1)
 
 # read the users current keyboard layout. Only reads the language, variants and other settings are ignored (fixme?)
 def getCurrentLayout():
