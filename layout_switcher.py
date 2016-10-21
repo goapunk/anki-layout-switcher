@@ -34,10 +34,13 @@ from anki.utils import isWin, isMac, isLin
 from aqt.addcards import AddCards
 from aqt.browser import Browser
 from switcher.listloc import localIdent2Name
+if isWin:
+    import win32api
 
 startLayout = 'us'
 loadedLayouts = []
 availableLayouts = [] 
+
 # isLin is undefined in the Windows alpha build ???
 isLin = not isWin and not isMac
 
@@ -139,7 +142,7 @@ def getLayouts():
 def nCloseEvent(self, event):
        restoreOrigLayout(self)
 
-def restoreOrigLayout(self):
+def restoreOrigLayout(self=None):
     if isLin:
         subprocess.run(["setxkbmap", startLayout])
     elif isWin:
@@ -149,6 +152,9 @@ def restoreOrigLayout(self):
                 win32api.UnloadKeyboardLayout(layout)
         win32api.LoadKeyboardLayout(startLayout,1)
 
+def onEditFocusLost(b, note, currentField):
+    restoreOrigLayout()
+
 # linux only (fixme?)
 if isLin: 
     getCurrentLayout()
@@ -157,7 +163,6 @@ if isLin:
     addHook("editFocusGained", onFocusGainedLin)
 
 if isWin:
-    import win32api
     getCurrentLayoutWin()
     # populate list with available layouts
     availableLayouts = localIdent2Name.keys()
@@ -167,7 +172,8 @@ if not isMac:
     Ui_Dialog.setupUi = wrap(Ui_Dialog.setupUi, newSetupUi)
     DeckConf.loadConf = wrap(DeckConf.loadConf, nLoadConf)
     DeckConf.saveConf = wrap(DeckConf.saveConf, nSaveConf)
-    # Hacks at different points to restore the original layout after editFocus was lost
+    addHook("editFocusLost", onEditFocusLost)
+    # Hacks at different points to restore the original layout after closing the browser/editor/anki
     AnkiQt.closeEvent = wrap(AnkiQt.closeEvent, nCloseEvent, "before")
     AddCards.reject = wrap(AddCards.reject, restoreOrigLayout)
     Browser.closeEvent = wrap(Browser.closeEvent, nCloseEvent, "before")
