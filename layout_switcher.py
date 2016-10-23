@@ -30,12 +30,14 @@ from aqt.forms.dconf import Ui_Dialog
 from aqt.qt import *
 from PyQt5 import QtCore, QtGui, QtWidgets
 from aqt.deckconf import DeckConf
-from anki.utils import isWin, isMac, isLin
+from anki.utils import isWin, isMac
 from aqt.addcards import AddCards
 from aqt.browser import Browser
 from switcher.listloc import localIdent2Name
 if isWin:
     import win32api
+# the Anki alpha builds for windows come without isLin defined
+isLin = not isWin and not isMac
 
 startLayout = 'us'
 loadedLayouts = []
@@ -146,10 +148,6 @@ def restoreOrigLayout(self=None):
     if isLin:
         subprocess.run(["setxkbmap", startLayout])
     elif isWin:
-        currentLayoutList = win32api.GetKeyboardLayoutList()
-        for layout in currentLayoutList:
-            if layout not in loadedLayouts:
-                win32api.UnloadKeyboardLayout(layout)
         win32api.LoadKeyboardLayout(startLayout,1)
 
 def onEditFocusLost(b, note, currentField):
