@@ -69,13 +69,20 @@ def onFocusGainedWin(note, num):
     elif num == 1:
         win32api.LoadKeyboardLayout(localIdent2Name[mw.col.decks.confForDid(mw.col.decks.current()['id']).get('answerLayout', startLayout)],1)
 
-# read the users current keyboard layout. Only reads the language, variants and other settings are ignored (fixme?)
+# read the users current keyboard layout. Only reads the language and variant, other settings are ignored (fixme?)
 def getCurrentLayout():
-    s = subprocess.Popen(("setxkbmap", "-print"),stdout=subprocess.PIPE).stdout.read()
-    reg =re.compile('xkb_symbols   { include \"(\S+)\+(?P<layout>\S+)\+(\S+)')
+    # query setxkbmap for current layout
+    s = subprocess.Popen(("setxkbmap", "-query"),stdout=subprocess.PIPE).stdout.read()
+    # get the layout
+    reg = re.compile('layout:\s+(?P<layout>\S+)\\\\')
     res = reg.search(str(s))
     global startLayout 
     startLayout = res.group('layout')
+    # get the variant
+    reg = re.compile('variant:\s+(?P<variant>\S+)\\\\')
+    res = reg.search(str(s))
+    global startVariant
+    startVariant = res.group('variant')
     if not startLayout:
         raise LayoutDetectionError()
         # exit here?
@@ -87,30 +94,41 @@ def getCurrentLayoutWin():
     
 # hook SetupUi() to add menu option to deck configuration
 def newSetupUi(self, Dialog):
+     # add Gridlayout
      self.gridLayout_4 = QtWidgets.QGridLayout()
      self.gridLayout_4.setObjectName("gridLayout_4")
+     self.verticalLayout_6.addLayout(self.gridLayout_4)
+     # add Checkbox to activate auto switching
      self.layout_switch = QtWidgets.QCheckBox(self.tab_5)
      self.layout_switch.setObjectName("layout_switch")
+     self.layout_switch.setText(_("Autoswitch keyboard layout:"))
      self.gridLayout_4.addWidget(self.layout_switch, 0, 0, 1, 1)
+     # add ComboBox holding the layout list for the answer field
      self.a_layout_b = QtWidgets.QComboBox(self.tab_5)
      self.a_layout_b.setObjectName("a_layout_b")
+     self.a_layout_b.setEditable(True)     
+     self.a_layout_b.setInsertPolicy(QComboBox.InsertAlphabetically)
+     self.a_layout_b.addItems(availableLayouts)
      self.gridLayout_4.addWidget(self.a_layout_b, 1, 2, 1, 1)
+     # add ComboBox holding the layout list for the question field
      self.q_layout_box = QtWidgets.QComboBox(self.tab_5)
      self.q_layout_box.setObjectName("q_layout_box")
+     self.q_layout_box.setEditable(True)
+     self.q_layout_box.setInsertPolicy(QComboBox.InsertAlphabetically)
+     self.q_layout_box.addItems(availableLayouts)
      self.gridLayout_4.addWidget(self.q_layout_box, 1, 1, 1, 1)
+     # add Label 
      self.label_15 = QtWidgets.QLabel(self.tab_5)
      self.label_15.setObjectName("label_15")
+     self.label_15.setText(_("Question layout"))
      self.gridLayout_4.addWidget(self.label_15, 0, 1, 1, 1)
+     # add Label
      self.label_16 = QtWidgets.QLabel(self.tab_5)
      self.label_16.setObjectName("label_16")
-     self.gridLayout_4.addWidget(self.label_16, 0, 2, 1, 1)
-     self.verticalLayout_6.addLayout(self.gridLayout_4)
-     self.tabWidget.setCurrentIndex(3)
-     self.layout_switch.setText(_("Autoswitch keyboard layout:"))
-     self.label_15.setText(_("Question layout"))
      self.label_16.setText(_("Answer layout"))
-     self.a_layout_b.addItems(availableLayouts)
-     self.q_layout_box.addItems(availableLayouts)
+     self.gridLayout_4.addWidget(self.label_16, 0, 2, 1, 1)
+     # tab props
+     self.tabWidget.setCurrentIndex(3)
 
 # hook saveConf() to save our settings
 def nSaveConf(self):
@@ -126,8 +144,20 @@ def nLoadConf(self):
     self.conf = self.mw.col.decks.confForDid(self.deck['id'])
     c = self.conf
     f.layout_switch.setChecked(c.get('autoswitchLayout',False)) 
-    f.q_layout_box.setCurrentIndex(f.q_layout_box.findText(c.get('questionLayout', startLayout)))
-    f.a_layout_b.setCurrentIndex(f.q_layout_box.findText(c.get('answerLayout',startLayout)))
+    # load layout for the question field
+    questionLayout = c.get('questionLayout',startLayout)
+    questionIndex = f.q_layout_box.findText(answerLayout)
+    if questionIndex >= 0:
+        f.q_layout_b.setCurrentIndex(questionIndex)
+    else:
+        f.q_layout_b.setCurrentText(questionLayout)
+    # load layout for the answer field 
+    answerLayout = c.get('answerLayout',startLayout)
+    answerIndex = f.a_layout_box.findText(answerLayout)
+    if answerIndex >= 0:
+        f.a_layout_b.setCurrentIndex(answerIndex)
+    else:
+        f.a_layout_b.setCurrentText(answerLayout)
 
 # try to find all available layouts on this os
 def getLayouts():
