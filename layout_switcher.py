@@ -211,7 +211,7 @@ def nCloseEvent(self, event):
 
 def restoreOrigLayout(self=None):
     if isLin:
-        subprocess.run(["setxkbmap", startLayout])
+        subprocess.run(["setxkbmap", startLayout, startVariant])
     elif isWin:
         win32api.LoadKeyboardLayout(startLayout,1)
 

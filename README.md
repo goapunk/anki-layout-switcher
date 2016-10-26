@@ -1,10 +1,10 @@
-Autoswitch the keyboard layout when changing between question and answer field (Linux + X11 only)
+Autoswitch the keyboard layout when changing between question and answer field
 
 Layouts can be set in the deck option ("general" tab)
 
-Be aware: parsing the currently used keyboard layout is very difficult - this might mess up your settings if you use layout variants.
+Rudimentary Windows support has been added:
 
-Windows support has been added:
+** Be aware, this might mess up your layout on Windows (I didn't really test it) **
 
 Requirements: 
 
