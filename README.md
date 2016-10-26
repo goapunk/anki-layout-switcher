@@ -4,10 +4,9 @@ Layouts can be set in the deck option ("general" tab)
 
 Rudimentary Windows support has been added:
 
-** Be aware, this might mess up your layout on Windows (I didn't really test it) **
+**Be aware, this might mess up your layout on Windows (I didn't really test it)**
 
-Requirements: 
+**Requirements:** 
 
-*a version of Anki compiled against PyQt5 (currently only the alpha builds come with PyQt5 on Windows)
-
-*pywin32 (https://sourceforge.net/projects/pywin32/)
+* a version of Anki compiled against PyQt5 (currently only the alpha builds come with PyQt5 on Windows)
+* pywin32 (https://sourceforge.net/projects/pywin32/)
