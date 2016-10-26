@@ -99,6 +99,8 @@ def getCurrentLayoutWin():
 
 # hook SetupUi() to add menu option to deck configuration
 def newSetupUi(self, Dialog):
+     # remove the spacer from the tab 
+     self.verticalLayout_6.removeItem(self.verticalLayout_6.itemAt(4))
      # add Gridlayout
      self.gridLayout_4 = QtWidgets.QGridLayout()
      self.gridLayout_4.setObjectName("gridLayout_4")
@@ -155,6 +157,9 @@ def newSetupUi(self, Dialog):
      # change variants according to layout, incredibly lame
      self.q_layout_box.currentTextChanged.connect(lambda t, s = self.q_variant_box: not s.clear() and s.addItems(availableLayouts[t]))
      self.a_layout_box.currentTextChanged.connect(lambda t, s = self.a_variant_box: not s.clear() and s.addItems(availableLayouts[t]))
+     # add the previously removed spacer
+     spacerItem4 = QtWidgets.QSpacerItem(20, 199, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+     self.verticalLayout_6.addItem(spacerItem4)
 
 # hook saveConf() to save our settings
 def nSaveConf(self):
