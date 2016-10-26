@@ -40,8 +40,8 @@ if isWin:
 isLin = not isWin and not isMac
 
 startLayout = 'us'
-loadedLayouts = []
-availableLayouts = [] 
+startVariant = ''
+availableLayouts = {} 
 
 # isLin is undefined in the Windows alpha build ???
 isLin = not isWin and not isMac
@@ -58,9 +58,12 @@ class NoLayoutsFound(Exception):
 # switch layout according to the field in focus for Linux
 def onFocusGainedLin(note, num):
     if num == 0:
-        subprocess.run(["setxkbmap",mw.col.decks.confForDid(mw.col.decks.current()['id']).get('questionLayout', startLayout)])
+        layout = mw.col.decks.confForDid(mw.col.decks.current()['id']).get('questionLayout', startLayout)
+        variant = mw.col.decks.confForDid(mw.col.decks.current()['id']).get('questionVariant', "")
     elif num == 1:
-        subprocess.run(["setxkbmap",mw.col.decks.confForDid(mw.col.decks.current()['id']).get('answerLayout', startLayout)])
+        layout = mw.col.decks.confForDid(mw.col.decks.current()['id']).get('answerLayout', startLayout)
+        variant = mw.col.decks.confForDid(mw.col.decks.current()['id']).get('answerVariant', "")
+    subprocess.run(["setxkbmap",layout,variant])
 
 # switch layout according to the field in focus for Windows
 def onFocusGainedWin(note, num):
@@ -77,21 +80,23 @@ def getCurrentLayout():
     reg = re.compile('layout:\s+(?P<layout>\S+)\\\\')
     res = reg.search(str(s))
     global startLayout 
+    if res == None:
+        raise LayoutDetectionError()
     startLayout = res.group('layout')
     # get the variant
     reg = re.compile('variant:\s+(?P<variant>\S+)\\\\')
     res = reg.search(str(s))
     global startVariant
-    startVariant = res.group('variant')
+    if res != None:
+        startVariant = res.group('variant')
     if not startLayout:
         raise LayoutDetectionError()
         # exit here?
 
 def getCurrentLayoutWin():
-    global startLayout, loadedLayouts
+    global startLayout
     startLayout = win32api.GetKeyboardLayoutName()
-    loadedLayouts = win32api.GetKeyboardLayoutList()
-    
+
 # hook SetupUi() to add menu option to deck configuration
 def newSetupUi(self, Dialog):
      # add Gridlayout
@@ -104,19 +109,37 @@ def newSetupUi(self, Dialog):
      self.layout_switch.setText(_("Autoswitch keyboard layout:"))
      self.gridLayout_4.addWidget(self.layout_switch, 0, 0, 1, 1)
      # add ComboBox holding the layout list for the answer field
-     self.a_layout_b = QtWidgets.QComboBox(self.tab_5)
-     self.a_layout_b.setObjectName("a_layout_b")
-     self.a_layout_b.setEditable(True)     
-     self.a_layout_b.setInsertPolicy(QComboBox.InsertAlphabetically)
-     self.a_layout_b.addItems(availableLayouts)
-     self.gridLayout_4.addWidget(self.a_layout_b, 1, 2, 1, 1)
+     self.a_layout_box = QtWidgets.QComboBox(self.tab_5)
+     self.a_layout_box.setObjectName("a_layout_box")
+     self.a_layout_box.setInsertPolicy(QComboBox.InsertAlphabetically)
+     self.a_layout_box.addItems(availableLayouts.keys())
+     self.gridLayout_4.addWidget(self.a_layout_box, 1, 2, 1, 1)
      # add ComboBox holding the layout list for the question field
      self.q_layout_box = QtWidgets.QComboBox(self.tab_5)
      self.q_layout_box.setObjectName("q_layout_box")
-     self.q_layout_box.setEditable(True)
      self.q_layout_box.setInsertPolicy(QComboBox.InsertAlphabetically)
-     self.q_layout_box.addItems(availableLayouts)
+     self.q_layout_box.addItems(availableLayouts.keys())
      self.gridLayout_4.addWidget(self.q_layout_box, 1, 1, 1, 1)
+     # add ComboBox holding the variant list for the question field
+     self.q_variant_box = QtWidgets.QComboBox(self.tab_5)
+     self.q_variant_box.setObjectName("q_variant_box")
+     self.q_variant_box.setInsertPolicy(QComboBox.InsertAlphabetically)
+     self.gridLayout_4.addWidget(self.q_variant_box, 3, 1, 1, 1)
+     # add ComboBox holding the variant list for the question field
+     self.a_variant_box = QtWidgets.QComboBox(self.tab_5)
+     self.a_variant_box.setObjectName("a_variant_box")
+     self.a_variant_box.setInsertPolicy(QComboBox.InsertAlphabetically)
+     self.gridLayout_4.addWidget(self.a_variant_box, 3, 2, 1, 1)
+     # add Label 
+     self.label_17 = QtWidgets.QLabel(self.tab_5)
+     self.label_17.setObjectName("label_17")
+     self.label_17.setText(_("Layout variant"))
+     self.gridLayout_4.addWidget(self.label_17, 2, 1, 1, 1)
+     # add Label 
+     self.label_18 = QtWidgets.QLabel(self.tab_5)
+     self.label_18.setObjectName("label_18")
+     self.label_18.setText(_("Layout variant"))
+     self.gridLayout_4.addWidget(self.label_18, 2, 2, 1, 1)
      # add Label 
      self.label_15 = QtWidgets.QLabel(self.tab_5)
      self.label_15.setObjectName("label_15")
@@ -129,6 +152,9 @@ def newSetupUi(self, Dialog):
      self.gridLayout_4.addWidget(self.label_16, 0, 2, 1, 1)
      # tab props
      self.tabWidget.setCurrentIndex(3)
+     # change variants according to layout, incredibly lame
+     self.q_layout_box.currentTextChanged.connect(lambda t, s = self.q_variant_box: not s.clear() and s.addItems(availableLayouts[t]))
+     self.a_layout_box.currentTextChanged.connect(lambda t, s = self.a_variant_box: not s.clear() and s.addItems(availableLayouts[t]))
 
 # hook saveConf() to save our settings
 def nSaveConf(self):
@@ -136,28 +162,27 @@ def nSaveConf(self):
     f = self.form
     c['autoswitchLayout'] = f.layout_switch.isChecked()
     c['questionLayout'] = f.q_layout_box.currentText()
-    c['answerLayout'] = f.a_layout_b.currentText()
+    c['answerLayout'] = f.a_layout_box.currentText()
+    c['questionVariant'] = f.q_variant_box.currentText()
+    c['answerVariant'] = f.a_variant_box.currentText()
+
 
 # hook loadConf() to load our settings
 def nLoadConf(self):
     f = self.form
-    self.conf = self.mw.col.decks.confForDid(self.deck['id'])
     c = self.conf
+    self.conf = self.mw.col.decks.confForDid(self.deck['id'])
     f.layout_switch.setChecked(c.get('autoswitchLayout',False)) 
     # load layout for the question field
-    questionLayout = c.get('questionLayout',startLayout)
-    questionIndex = f.q_layout_box.findText(answerLayout)
-    if questionIndex >= 0:
-        f.q_layout_b.setCurrentIndex(questionIndex)
-    else:
-        f.q_layout_b.setCurrentText(questionLayout)
+    f.q_layout_box.setCurrentIndex(f.q_layout_box.findText(c.get('questionLayout', startLayout)))
+    questionVariant = c.get('questionVariant', "")
+    if questionVariant:
+        f.q_variant_box.setCurrentIndex(f.q_variant_box.findText(questionVariant))
     # load layout for the answer field 
-    answerLayout = c.get('answerLayout',startLayout)
-    answerIndex = f.a_layout_box.findText(answerLayout)
-    if answerIndex >= 0:
-        f.a_layout_b.setCurrentIndex(answerIndex)
-    else:
-        f.a_layout_b.setCurrentText(answerLayout)
+    f.a_layout_box.setCurrentIndex(f.a_layout_box.findText(c.get('answerLayout', startLayout)))
+    answerVariant = c.get('answerVariant',"")
+    if answerVariant:
+        f.a_variant_box.setCurrentIndex(f.a_variant_box.findText(answerVariant))
 
 # try to find all available layouts on this os
 def getLayouts():
@@ -166,9 +191,14 @@ def getLayouts():
     tree = lxml.etree.parse(open(repository))
     layouts = tree.xpath("//layout")
     global availableLayouts
-    availableLayouts = list(map(lambda x:x.xpath("./configItem/name")[0].text, layouts))
-    if len(availableLayouts) == 0:
-        raise NoLayoutsFound()
+    for layout in layouts:
+        variants = layout.xpath(".//variant")
+        l = list(map(lambda x:x.xpath(".//name")[0].text,variants))
+        l.append("")
+        l.sort()
+        availableLayouts[layout.xpath("./configItem/name")[0].text] = l
+        if len(availableLayouts) == 0:
+            raise NoLayoutsFound()
 
 # hook closeEvent() to change back to the initial layout
 def nCloseEvent(self, event):
@@ -182,7 +212,6 @@ def restoreOrigLayout(self=None):
 
 def onEditFocusLost(b, note, currentField):
     restoreOrigLayout()
-
 # linux only (fixme?)
 if isLin: 
     getCurrentLayout()
@@ -193,7 +222,7 @@ if isLin:
 if isWin:
     getCurrentLayoutWin()
     # populate list with available layouts
-    availableLayouts = localIdent2Name.keys()
+    availableLayouts = localIdent2Name
     addHook("editFocusGained", onFocusGainedWin)
 
 if not isMac:
