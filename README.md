@@ -1,3 +1,5 @@
+#Anki layout switcher
+
 Autoswitch the keyboard layout when changing between question and answer field
 
 Layouts can be set in the deck option ("general" tab)

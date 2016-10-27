@@ -35,13 +35,16 @@ from aqt.addcards import AddCards
 from aqt.browser import Browser
 from switcher.listloc import localIdent2Name
 if isWin:
+    # Fixme: make all Win calls through ctypes ?
     import win32api
+    import ctypes
 # the Anki alpha builds for windows come without isLin defined
 isLin = not isWin and not isMac
 
 startLayout = 'us'
 startVariant = ''
-availableLayouts = {} 
+loadedLayouts = []
+availableLayouts = {}
 
 # isLin is undefined in the Windows alpha build ???
 isLin = not isWin and not isMac
@@ -79,7 +82,7 @@ def getCurrentLayout():
     # get the layout
     reg = re.compile('layout:\s+(?P<layout>\S+)\\\\')
     res = reg.search(str(s))
-    global startLayout 
+    global startLayout
     if res == None:
         raise LayoutDetectionError()
     startLayout = res.group('layout')
@@ -94,12 +97,13 @@ def getCurrentLayout():
         # exit here?
 
 def getCurrentLayoutWin():
-    global startLayout
+    global startLayout, loadedLayouts
     startLayout = win32api.GetKeyboardLayoutName()
+    loadedLayouts = win32api.GetKeyboardLayoutList()
 
 # hook SetupUi() to add menu option to deck configuration
 def newSetupUi(self, Dialog):
-     # remove the spacer from the tab 
+     # remove the spacer from the tab
      self.verticalLayout_6.removeItem(self.verticalLayout_6.itemAt(4))
      # add Gridlayout
      self.gridLayout_4 = QtWidgets.QGridLayout()
@@ -114,35 +118,15 @@ def newSetupUi(self, Dialog):
      self.a_layout_box = QtWidgets.QComboBox(self.tab_5)
      self.a_layout_box.setObjectName("a_layout_box")
      self.a_layout_box.setInsertPolicy(QComboBox.InsertAlphabetically)
-     self.a_layout_box.addItems(availableLayouts.keys())
+     self.a_layout_box.addItems(sorted(availableLayouts.keys()))
      self.gridLayout_4.addWidget(self.a_layout_box, 1, 2, 1, 1)
      # add ComboBox holding the layout list for the question field
      self.q_layout_box = QtWidgets.QComboBox(self.tab_5)
      self.q_layout_box.setObjectName("q_layout_box")
      self.q_layout_box.setInsertPolicy(QComboBox.InsertAlphabetically)
-     self.q_layout_box.addItems(availableLayouts.keys())
+     self.q_layout_box.addItems(sorted(availableLayouts.keys()))
      self.gridLayout_4.addWidget(self.q_layout_box, 1, 1, 1, 1)
-     # add ComboBox holding the variant list for the question field
-     self.q_variant_box = QtWidgets.QComboBox(self.tab_5)
-     self.q_variant_box.setObjectName("q_variant_box")
-     self.q_variant_box.setInsertPolicy(QComboBox.InsertAlphabetically)
-     self.gridLayout_4.addWidget(self.q_variant_box, 3, 1, 1, 1)
-     # add ComboBox holding the variant list for the question field
-     self.a_variant_box = QtWidgets.QComboBox(self.tab_5)
-     self.a_variant_box.setObjectName("a_variant_box")
-     self.a_variant_box.setInsertPolicy(QComboBox.InsertAlphabetically)
-     self.gridLayout_4.addWidget(self.a_variant_box, 3, 2, 1, 1)
-     # add Label 
-     self.label_17 = QtWidgets.QLabel(self.tab_5)
-     self.label_17.setObjectName("label_17")
-     self.label_17.setText(_("Layout variant"))
-     self.gridLayout_4.addWidget(self.label_17, 2, 1, 1, 1)
-     # add Label 
-     self.label_18 = QtWidgets.QLabel(self.tab_5)
-     self.label_18.setObjectName("label_18")
-     self.label_18.setText(_("Layout variant"))
-     self.gridLayout_4.addWidget(self.label_18, 2, 2, 1, 1)
-     # add Label 
+      # add Label
      self.label_15 = QtWidgets.QLabel(self.tab_5)
      self.label_15.setObjectName("label_15")
      self.label_15.setText(_("Question layout"))
@@ -154,9 +138,32 @@ def newSetupUi(self, Dialog):
      self.gridLayout_4.addWidget(self.label_16, 0, 2, 1, 1)
      # tab props
      self.tabWidget.setCurrentIndex(3)
-     # change variants according to layout, incredibly lame
-     self.q_layout_box.currentTextChanged.connect(lambda t, s = self.q_variant_box: not s.clear() and s.addItems(availableLayouts[t]))
-     self.a_layout_box.currentTextChanged.connect(lambda t, s = self.a_variant_box: not s.clear() and s.addItems(availableLayouts[t]))
+     # Add the variant option on Linux only, Windows has them combined in the layout option
+     if isLin:
+         # add ComboBox holding the variant list for the question field
+         self.q_variant_box = QtWidgets.QComboBox(self.tab_5)
+         self.q_variant_box.setObjectName("q_variant_box")
+         self.q_variant_box.setInsertPolicy(QComboBox.InsertAlphabetically)
+         self.gridLayout_4.addWidget(self.q_variant_box, 3, 1, 1, 1)
+         # add ComboBox holding the variant list for the question field
+         self.a_variant_box = QtWidgets.QComboBox(self.tab_5)
+         self.a_variant_box.setObjectName("a_variant_box")
+         self.a_variant_box.setInsertPolicy(QComboBox.InsertAlphabetically)
+         self.gridLayout_4.addWidget(self.a_variant_box, 3, 2, 1, 1)
+         # add Label
+         self.label_17 = QtWidgets.QLabel(self.tab_5)
+         self.label_17.setObjectName("label_17")
+         self.label_17.setText(_("Layout variant"))
+         self.gridLayout_4.addWidget(self.label_17, 2, 1, 1, 1)
+         # add Label
+         self.label_18 = QtWidgets.QLabel(self.tab_5)
+         self.label_18.setObjectName("label_18")
+         self.label_18.setText(_("Layout variant"))
+         self.gridLayout_4.addWidget(self.label_18, 2, 2, 1, 1)
+         # change variants according to layout, incredibly lame
+         self.q_layout_box.currentTextChanged.connect(lambda t, s = self.q_variant_box: not s.clear() and s.addItems(availableLayouts[t]))
+         self.a_layout_box.currentTextChanged.connect(lambda t, s = self.a_variant_box: not s.clear() and s.addItems(availableLayouts[t]))
+
      # add the previously removed spacer
      spacerItem4 = QtWidgets.QSpacerItem(20, 199, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
      self.verticalLayout_6.addItem(spacerItem4)
@@ -168,8 +175,9 @@ def nSaveConf(self):
     c['autoswitchLayout'] = f.layout_switch.isChecked()
     c['questionLayout'] = f.q_layout_box.currentText()
     c['answerLayout'] = f.a_layout_box.currentText()
-    c['questionVariant'] = f.q_variant_box.currentText()
-    c['answerVariant'] = f.a_variant_box.currentText()
+    if isLin:
+	    c['questionVariant'] = f.q_variant_box.currentText()
+	    c['answerVariant'] = f.a_variant_box.currentText()
 
 
 # hook loadConf() to load our settings
@@ -177,17 +185,18 @@ def nLoadConf(self):
     f = self.form
     c = self.conf
     self.conf = self.mw.col.decks.confForDid(self.deck['id'])
-    f.layout_switch.setChecked(c.get('autoswitchLayout',False)) 
+    f.layout_switch.setChecked(c.get('autoswitchLayout',False))
     # load layout for the question field
     f.q_layout_box.setCurrentIndex(f.q_layout_box.findText(c.get('questionLayout', startLayout)))
-    questionVariant = c.get('questionVariant', "")
-    if questionVariant:
-        f.q_variant_box.setCurrentIndex(f.q_variant_box.findText(questionVariant))
-    # load layout for the answer field 
+    # load layout for the answer field
     f.a_layout_box.setCurrentIndex(f.a_layout_box.findText(c.get('answerLayout', startLayout)))
-    answerVariant = c.get('answerVariant',"")
-    if answerVariant:
-        f.a_variant_box.setCurrentIndex(f.a_variant_box.findText(answerVariant))
+    if isLin:
+	    questionVariant = c.get('questionVariant', "")
+	    if questionVariant:
+	        f.q_variant_box.setCurrentIndex(f.q_variant_box.findText(questionVariant))
+            answerVariant = c.get('answerVariant',"")
+	    if answerVariant:
+	        f.a_variant_box.setCurrentIndex(f.a_variant_box.findText(answerVariant))
 
 # try to find all available layouts on this os
 def getLayouts():
@@ -213,18 +222,26 @@ def restoreOrigLayout(self=None):
     if isLin:
         subprocess.run(["setxkbmap", startLayout, startVariant])
     elif isWin:
+        currentLayoutList = win32api.GetKeyboardLayoutList()
         win32api.LoadKeyboardLayout(startLayout,1)
+        # remove layouts loaded by Anki
+        for layout in currentLayoutList:
+            if layout not in loadedLayouts:
+                if not UnloadKeyboardLayout(layout):
+                    raise Exception("Could not unload Layout")
 
 def onEditFocusLost(b, note, currentField):
     restoreOrigLayout()
 # linux only (fixme?)
-if isLin: 
+if isLin:
     getCurrentLayout()
     #populate list with available layouts
     getLayouts()
     addHook("editFocusGained", onFocusGainedLin)
 
 if isWin:
+    winLib = ctypes.WinDLL('User32.dll')
+    UnloadKeyboardLayout = winLib['UnloadKeyboardLayout']
     getCurrentLayoutWin()
     # populate list with available layouts
     availableLayouts = localIdent2Name
