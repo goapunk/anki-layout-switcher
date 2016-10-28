@@ -14,3 +14,6 @@ Rudimentary Windows (10 - didn't test it on anything else) support has been adde
 
 * a version of Anki compiled against PyQt5 (currently only the alpha builds come with PyQt5 on Windows)
 * pywin32 (https://sourceforge.net/projects/pywin32/)
+
+**For Windows user:**
+If you switch to another non-anki window (e.g. Browser, Thunderbird...) while the "Add Cards/Editor"  window is still open (=> while adding/editing cards) the layout of the "Front" or "Back" field might be carried to that window (and will be difficult to reset without reboot). To prevent this, make a left click somewhere in the "Add Cards/Editor" window. This will reset the layout back to the default value until you click back into the "Front" or "Back" field.  
