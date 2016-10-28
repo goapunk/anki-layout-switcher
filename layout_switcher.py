@@ -176,8 +176,8 @@ def nSaveConf(self):
     c['questionLayout'] = f.q_layout_box.currentText()
     c['answerLayout'] = f.a_layout_box.currentText()
     if isLin:
-	    c['questionVariant'] = f.q_variant_box.currentText()
-	    c['answerVariant'] = f.a_variant_box.currentText()
+            c['questionVariant'] = f.q_variant_box.currentText()
+            c['answerVariant'] = f.a_variant_box.currentText()
 
 
 # hook loadConf() to load our settings
@@ -191,12 +191,12 @@ def nLoadConf(self):
     # load layout for the answer field
     f.a_layout_box.setCurrentIndex(f.a_layout_box.findText(c.get('answerLayout', startLayout)))
     if isLin:
-	    questionVariant = c.get('questionVariant', "")
-	    if questionVariant:
-	        f.q_variant_box.setCurrentIndex(f.q_variant_box.findText(questionVariant))
+            questionVariant = c.get('questionVariant', "")
+            if questionVariant:
+                f.q_variant_box.setCurrentIndex(f.q_variant_box.findText(questionVariant))
             answerVariant = c.get('answerVariant',"")
-	    if answerVariant:
-	        f.a_variant_box.setCurrentIndex(f.a_variant_box.findText(answerVariant))
+            if answerVariant:
+                f.a_variant_box.setCurrentIndex(f.a_variant_box.findText(answerVariant))
 
 # try to find all available layouts on this os
 def getLayouts():
@@ -254,5 +254,5 @@ if not isMac:
     addHook("editFocusLost", onEditFocusLost)
     # Hacks at different points to restore the original layout after closing the browser/editor/anki
     AnkiQt.closeEvent = wrap(AnkiQt.closeEvent, nCloseEvent, "before")
-    AddCards.reject = wrap(AddCards.reject, restoreOrigLayout)
+    AddCards.reject = wrap(AddCards.reject, restoreOrigLayout, "before")
     Browser.closeEvent = wrap(Browser.closeEvent, nCloseEvent, "before")
